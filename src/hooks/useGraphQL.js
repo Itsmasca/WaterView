@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { graphqlRequest, createSubscription } from '@/lib/graphql/client';
+import { useState, useEffect, useCallback } from 'react';
+import { graphqlRequest } from '@/lib/graphql/client';
 import {
   GET_FLOW_READINGS,
   GET_LATEST_FLOW_READING,
@@ -10,9 +10,6 @@ import {
   GET_FILLING_METRICS,
   GET_FILLINGS,
   GET_ACTIVE_FILLING,
-  LIVE_FLOW_READING_SUBSCRIPTION,
-  PUMP_STATUS_SUBSCRIPTION,
-  ALERTS_SUBSCRIPTION,
 } from '@/lib/graphql/queries';
 
 /**
@@ -51,41 +48,6 @@ export function useQuery(query, variables = {}, options = {}) {
   return { data, loading, error, refetch: fetchData };
 }
 
-/**
- * Hook para subscriptions GraphQL en tiempo real
- */
-export function useSubscription(query, variables = {}, options = {}) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  const [connected, setConnected] = useState(false);
-  const unsubscribeRef = useRef(null);
-  const { skip = false, onData } = options;
-
-  useEffect(() => {
-    if (skip || typeof window === 'undefined') return;
-
-    const handleData = (newData) => {
-      setData(newData);
-      setConnected(true);
-      if (onData) onData(newData);
-    };
-
-    const handleError = (err) => {
-      setError(err);
-      setConnected(false);
-    };
-
-    unsubscribeRef.current = createSubscription(query, variables, handleData, handleError);
-
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, [query, JSON.stringify(variables), skip]);
-
-  return { data, error, connected };
-}
 
 /**
  * Hook para obtener lecturas de flujo
@@ -163,54 +125,37 @@ export function useActiveFilling(deviceId) {
 }
 
 /**
- * Hook para subscription de flujo en tiempo real
+ * Hook para obtener lecturas de flujo con polling frecuente (simula tiempo real)
  */
 export function useLiveFlowReading(deviceId) {
-  return useSubscription(LIVE_FLOW_READING_SUBSCRIPTION, { deviceId }, {
+  return useQuery(GET_LATEST_FLOW_READING, { deviceId }, {
     skip: !deviceId,
+    pollInterval: 3000, // Polling cada 3 segundos
   });
 }
 
 /**
- * Hook para subscription de estado de bomba
+ * Hook para estado de bomba con polling
  */
 export function useLivePumpStatus(deviceId) {
-  return useSubscription(PUMP_STATUS_SUBSCRIPTION, { deviceId }, {
+  return useQuery(GET_PUMP_STATUS, { deviceId }, {
     skip: !deviceId,
+    pollInterval: 5000, // Polling cada 5 segundos
   });
 }
 
 /**
- * Hook para subscription de alertas
- */
-export function useAlerts(deviceId = null) {
-  const [alerts, setAlerts] = useState([]);
-
-  const { data, error, connected } = useSubscription(
-    ALERTS_SUBSCRIPTION,
-    { deviceId },
-    {
-      onData: (newData) => {
-        if (newData.alerts) {
-          setAlerts((prev) => [newData.alerts, ...prev].slice(0, 50));
-        }
-      },
-    }
-  );
-
-  return { alerts, latestAlert: data?.alerts, error, connected };
-}
-
-/**
- * Hook combinado para dashboard con todos los datos
+ * Hook combinado para dashboard con todos los datos reales
  */
 export function useDashboardData(deviceId) {
   const [flowHistory, setFlowHistory] = useState([]);
+  const [connected, setConnected] = useState(false);
 
-  // Queries
-  const { data: latestReading, loading: loadingLatest } = useLatestFlowReading(deviceId);
-  const { data: pumpStatus, loading: loadingPump } = usePumpStatus(deviceId);
+  // Queries con polling para datos en tiempo real
+  const { data: latestReading, loading: loadingLatest, error: errorLatest } = useLiveFlowReading(deviceId);
+  const { data: pumpStatus, loading: loadingPump } = useLivePumpStatus(deviceId);
   const { data: fillingsData, loading: loadingFillings } = useFillings(deviceId, 10);
+  const { data: flowReadings } = useFlowReadings(deviceId, 24);
 
   // Métricas (últimas 24 horas)
   const now = new Date();
@@ -218,32 +163,35 @@ export function useDashboardData(deviceId) {
   const { data: flowMetrics, loading: loadingFlowMetrics } = useFlowMetrics(deviceId, yesterday, now);
   const { data: fillingMetrics, loading: loadingFillingMetrics } = useFillingMetrics(deviceId, yesterday, now);
 
-  // Subscriptions en tiempo real
-  const { data: liveFlow, connected: flowConnected } = useLiveFlowReading(deviceId);
-  const { data: livePump, connected: pumpConnected } = useLivePumpStatus(deviceId);
-  const { alerts } = useAlerts(deviceId);
-
-  // Actualizar historial con datos en tiempo real
+  // Actualizar estado de conexión
   useEffect(() => {
-    if (liveFlow?.liveFlowReading) {
-      const reading = liveFlow.liveFlowReading;
-      setFlowHistory((prev) => {
-        const newHistory = [...prev, {
-          time: new Date(reading.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-          flowRate: reading.flowRate,
-          totalVolume: reading.totalVolume,
-        }];
-        return newHistory.slice(-24); // Mantener solo las últimas 24 lecturas
-      });
+    if (latestReading?.latestFlowReading && !errorLatest) {
+      setConnected(true);
+    } else if (errorLatest) {
+      setConnected(false);
     }
-  }, [liveFlow]);
+  }, [latestReading, errorLatest]);
+
+  // Construir historial de flujo desde las lecturas
+  useEffect(() => {
+    if (flowReadings?.flowReadings?.length > 0) {
+      const history = flowReadings.flowReadings
+        .slice(-24)
+        .map(reading => ({
+          time: new Date(reading.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          flowRate: reading.flowRate || 0,
+          totalVolume: reading.totalVolume || 0,
+        }));
+      setFlowHistory(history);
+    }
+  }, [flowReadings]);
 
   const loading = loadingLatest || loadingPump || loadingFillings || loadingFlowMetrics || loadingFillingMetrics;
 
   return {
     // Datos actuales
-    latestReading: liveFlow?.liveFlowReading || latestReading?.latestFlowReading,
-    pumpStatus: livePump?.pumpStatusUpdates || pumpStatus?.pumpStatus,
+    latestReading: latestReading?.latestFlowReading,
+    pumpStatus: pumpStatus?.pumpStatus,
     fillings: fillingsData?.fillings || [],
 
     // Métricas
@@ -253,11 +201,8 @@ export function useDashboardData(deviceId) {
     // Historial para gráficas
     flowHistory,
 
-    // Alertas
-    alerts,
-
     // Estado
     loading,
-    connected: flowConnected || pumpConnected,
+    connected,
   };
 }

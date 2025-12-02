@@ -30,26 +30,15 @@ import {
   User,
   Wifi,
   WifiOff,
-  AlertTriangle,
-  Bell,
-  RefreshCw,
   Gauge,
   Power,
+  Loader2,
 } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
 import StatCard from '@/components/StatCard';
 import CustomTooltip from '@/components/CustomTooltip';
 import { useDashboardData } from '@/hooks/useGraphQL';
-import {
-  flowHistoryData,
-  deviceDistributionData,
-  sensorPerformanceData,
-  systemStatusData,
-  recentReadings,
-  defaultMetrics,
-} from '@/data/mockData';
 
 // ID del dispositivo por defecto (puedes cambiarlo o hacerlo configurable)
 const DEFAULT_DEVICE_ID = 'flowsensor_001';
@@ -133,61 +122,12 @@ function PumpGauge({ level = 0, status = 'off', shouldWarn = false, shouldStop =
   );
 }
 
-function AlertsList({ alerts = [] }) {
-  if (alerts.length === 0) {
-    return (
-      <div style={{
-        textAlign: 'center',
-        padding: '24px',
-        color: 'var(--text-muted)',
-      }}>
-        <Bell size={32} style={{ opacity: 0.5, marginBottom: '8px' }} />
-        <p>Sin alertas recientes</p>
-      </div>
-    );
-  }
-
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'critical': return 'var(--accent-red)';
-      case 'warning': return 'var(--accent-yellow)';
-      default: return 'var(--accent-cyan)';
-    }
-  };
-
-  return (
-    <div className="queries-list">
-      {alerts.slice(0, 5).map((alert, index) => (
-        <div key={alert.id || index} className="query-item">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle size={16} style={{ color: getSeverityColor(alert.severity) }} />
-            <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
-              {alert.message}
-            </span>
-          </div>
-          <div className="query-meta">
-            <span className="query-time">
-              {new Date(alert.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-            <div
-              className="query-status"
-              style={{
-                background: getSeverityColor(alert.severity),
-                boxShadow: `0 0 8px ${getSeverityColor(alert.severity)}`,
-              }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function DashboardContent() {
   const { user, logout } = useAuth();
   const [deviceId, setDeviceId] = useState(DEFAULT_DEVICE_ID);
 
-  // Obtener datos del dashboard
+  // Obtener datos del dashboard desde GraphQL
   const {
     latestReading,
     pumpStatus,
@@ -195,33 +135,39 @@ function DashboardContent() {
     flowMetrics,
     fillingMetrics,
     flowHistory,
-    alerts,
     loading,
     connected,
   } = useDashboardData(deviceId);
 
-  // Usar datos reales o fallback a datos mock
-  const displayFlowHistory = flowHistory.length > 0 ? flowHistory : flowHistoryData;
+  // Métricas con valores reales
   const displayMetrics = {
-    totalVolume: flowMetrics?.totalVolume ?? defaultMetrics.totalVolume,
-    avgFlowRate: flowMetrics?.avgFlowRate ?? latestReading?.flowRate ?? defaultMetrics.avgFlowRate,
-    totalFillings: fillingMetrics?.totalFillings ?? defaultMetrics.totalFillings,
-    efficiency: fillingMetrics?.avgEfficiency ?? defaultMetrics.efficiency,
+    totalVolume: flowMetrics?.totalVolume ?? 0,
+    avgFlowRate: flowMetrics?.avgFlowRate ?? latestReading?.flowRate ?? 0,
+    totalFillings: fillingMetrics?.totalFillings ?? 0,
+    efficiency: fillingMetrics?.avgEfficiency ?? 0,
   };
 
   // Datos para gráficas
-  const chartFlowData = displayFlowHistory.map(item => ({
+  const chartFlowData = flowHistory.length > 0 ? flowHistory.map(item => ({
     time: item.time,
-    flowRate: item.flowRate || item.flow_rate || 0,
-    volume: item.volume || item.totalVolume || item.total_volume || 0,
-  }));
+    flowRate: item.flowRate || 0,
+    volume: item.totalVolume || 0,
+  })) : [];
 
   // Datos del nivel del tanque
-  const tankLevel = pumpStatus?.levelPercentage ?? 75;
-  const tankData = [
-    { name: 'Nivel Actual', value: tankLevel, fill: '#00D9FF' },
-    { name: 'Espacio Libre', value: 100 - tankLevel, fill: '#2A2A3E' },
-  ];
+  const tankLevel = pumpStatus?.levelPercentage ?? 0;
+
+  // Pantalla de carga inicial
+  if (loading && !latestReading && !pumpStatus) {
+    return (
+      <div className="dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader2 size={48} className="spin" style={{ color: 'var(--accent-cyan)', marginBottom: '16px' }} />
+          <p style={{ color: 'var(--text-muted)' }}>Conectando con el servidor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard">
@@ -241,7 +187,38 @@ function DashboardContent() {
             <button className="nav-tab">Configuración</button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {user && (
+            {user ? (
+              <>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                }}>
+                  <User size={16} style={{ color: 'var(--accent-cyan)' }} />
+                  <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    {user.username}
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    background: 'var(--accent-cyan)',
+                    color: 'var(--bg-primary)',
+                    borderRadius: '4px',
+                    fontWeight: 600,
+                  }}>
+                    {user.role}
+                  </span>
+                </div>
+                <button className="btn btn-secondary" onClick={logout}>
+                  <LogOut size={16} />
+                  Cerrar sesión
+                </button>
+              </>
+            ) : (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -253,24 +230,10 @@ function DashboardContent() {
               }}>
                 <User size={16} style={{ color: 'var(--accent-cyan)' }} />
                 <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {user.username}
-                </span>
-                <span style={{
-                  fontSize: '11px',
-                  padding: '2px 8px',
-                  background: 'var(--accent-cyan)',
-                  color: 'var(--bg-primary)',
-                  borderRadius: '4px',
-                  fontWeight: 600,
-                }}>
-                  {user.role}
+                  Invitado
                 </span>
               </div>
             )}
-            <button className="btn btn-secondary" onClick={logout}>
-              <LogOut size={16} />
-              Cerrar sesión
-            </button>
           </div>
         </div>
       </header>
@@ -404,7 +367,7 @@ function DashboardContent() {
             </div>
           </div>
           <PumpGauge
-            level={pumpStatus?.levelPercentage ?? 75}
+            level={pumpStatus?.levelPercentage ?? 0}
             status={pumpStatus?.status ?? 'off'}
             shouldWarn={pumpStatus?.shouldWarn ?? false}
             shouldStop={pumpStatus?.shouldStop ?? false}
@@ -416,74 +379,118 @@ function DashboardContent() {
         <div className="chart-card fade-in">
           <div className="chart-header">
             <div>
-              <div className="chart-title">Distribución de Uso</div>
-              <div className="chart-subtitle">Por dispositivo</div>
+              <div className="chart-title">Resumen de Llenados</div>
+              <div className="chart-subtitle">Por estado</div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={deviceDistributionData}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={4}
-                dataKey="value"
-              >
-                {deviceDistributionData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                verticalAlign="bottom"
-                height={36}
-                formatter={(value) => <span style={{ color: '#9CA3AF', fontSize: '11px' }}>{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          {fillingMetrics ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Completados', value: fillingMetrics.completedFillings || 0, fill: '#10B981' },
+                    { name: 'Cancelados', value: fillingMetrics.cancelledFillings || 0, fill: '#EF4444' },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  <Cell fill="#10B981" />
+                  <Cell fill="#EF4444" />
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  formatter={(value) => <span style={{ color: '#9CA3AF', fontSize: '11px' }}>{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+              {loading ? 'Cargando...' : 'Sin datos de llenados'}
+            </div>
+          )}
         </div>
 
         <div className="chart-card fade-in">
           <div className="chart-header">
             <div>
-              <div className="chart-title">Estado del Sistema</div>
-              <div className="chart-subtitle">Últimas 6 horas</div>
+              <div className="chart-title">Métricas de Flujo</div>
+              <div className="chart-subtitle">Últimas 24 horas</div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={systemStatusData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2D2D3A" />
-              <XAxis dataKey="hour" stroke="#6B7280" fontSize={12} />
-              <YAxis stroke="#6B7280" fontSize={12} domain={[0, 100]} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="online" stroke="#10B981" strokeWidth={2} dot={{ fill: '#10B981', r: 4 }} name="Online %" />
-              <Line type="monotone" dataKey="offline" stroke="#EF4444" strokeWidth={2} dot={{ fill: '#EF4444', r: 4 }} name="Offline %" />
-            </LineChart>
-          </ResponsiveContainer>
+          {flowMetrics ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={[
+                { name: 'Min', value: flowMetrics.minFlowRate || 0, fill: '#00D9FF' },
+                { name: 'Promedio', value: flowMetrics.avgFlowRate || 0, fill: '#A855F7' },
+                { name: 'Max', value: flowMetrics.maxFlowRate || 0, fill: '#FF6B9D' },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2D2D3A" />
+                <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
+                <YAxis stroke="#6B7280" fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" name="L/min" radius={[4, 4, 0, 0]}>
+                  <Cell fill="#00D9FF" />
+                  <Cell fill="#A855F7" />
+                  <Cell fill="#FF6B9D" />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+              {loading ? 'Cargando...' : 'Sin datos de flujo'}
+            </div>
+          )}
         </div>
 
         <div className="chart-card fade-in">
           <div className="chart-header">
             <div>
-              <div className="chart-title">Alertas Recientes</div>
-              <div className="chart-subtitle">Notificaciones del sistema</div>
+              <div className="chart-title">Estado de Conexión</div>
+              <div className="chart-subtitle">Información del dispositivo</div>
             </div>
-            {alerts.length > 0 && (
-              <span style={{
-                background: 'var(--accent-red)',
-                color: 'white',
-                padding: '2px 8px',
-                borderRadius: '10px',
-                fontSize: '12px',
-                fontWeight: 600,
+          </div>
+          <div style={{ padding: '20px', height: 180 }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Device ID</div>
+              <div style={{ fontSize: '14px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{deviceId}</div>
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Estado</div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                background: connected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                borderRadius: '6px',
               }}>
-                {alerts.length}
-              </span>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: connected ? '#10B981' : '#EF4444',
+                  boxShadow: connected ? '0 0 8px #10B981' : 'none',
+                }} />
+                <span style={{ fontSize: '13px', color: connected ? '#10B981' : '#EF4444' }}>
+                  {connected ? 'Conectado' : 'Desconectado'}
+                </span>
+              </div>
+            </div>
+            {flowMetrics && (
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Eficiencia</div>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--accent-cyan)' }}>
+                  {flowMetrics.efficiency?.toFixed(1) ?? 0}%
+                </div>
+              </div>
             )}
           </div>
-          <AlertsList alerts={alerts} />
         </div>
       </div>
 
@@ -524,9 +531,5 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  return (
-    <ProtectedRoute>
-      <DashboardContent />
-    </ProtectedRoute>
-  );
+  return <DashboardContent />;
 }
