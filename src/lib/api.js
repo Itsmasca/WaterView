@@ -2,7 +2,7 @@
  * Cliente API para comunicación con el backend FastAPI
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://water-dispenser-production.up.railway.app/api/v1';
 
 /**
  * Cliente HTTP base con manejo de tokens
