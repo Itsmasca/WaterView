@@ -10,9 +10,7 @@ import {
   EyeOff,
   ArrowRight,
   Loader2,
-  Github,
-  Chrome,
-  GitBranch,
+  Droplets,
   AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -84,7 +82,7 @@ export default function RegisterPage() {
       <div className="auth-card fade-in">
         <div className="auth-logo">
           <div className="logo-icon">
-            <GitBranch size={28} color="#0A0A0F" />
+            <Droplets size={28} color="#0A0A0F" />
           </div>
         </div>
         <h1 className="auth-title">Crear cuenta</h1>
@@ -200,24 +198,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <div className="divider">
-          <div className="divider-line" />
-          <span className="divider-text">o continúa con</span>
-          <div className="divider-line" />
-        </div>
-
-        <div className="social-buttons">
-          <button className="btn-social" type="button">
-            <Github size={20} />
-            GitHub
-          </button>
-          <button className="btn-social" type="button">
-            <Chrome size={20} />
-            Google
-          </button>
-        </div>
-
-        <p className="auth-switch">
+        <p className="auth-switch" style={{ marginTop: '24px' }}>
           ¿Ya tienes una cuenta?{' '}
           <Link href="/login" className="auth-switch-link">
             Inicia sesión

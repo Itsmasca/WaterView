@@ -8,7 +8,7 @@ import {
   ArrowRight,
   Loader2,
   CheckCircle,
-  GitBranch,
+  Droplets,
   AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
 
         <div className="auth-logo">
           <div className="logo-icon">
-            <GitBranch size={28} color="#0A0A0F" />
+            <Droplets size={28} color="#0A0A0F" />
           </div>
         </div>
         <h1 className="auth-title">Recuperar contraseña</h1>
