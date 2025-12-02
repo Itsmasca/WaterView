@@ -1,47 +1,79 @@
-export const queryPerformanceData = [
-  { time: "00:00", queries: 120, mutations: 45, latency: 23 },
-  { time: "04:00", queries: 89, mutations: 32, latency: 18 },
-  { time: "08:00", queries: 340, mutations: 128, latency: 45 },
-  { time: "12:00", queries: 520, mutations: 234, latency: 67 },
-  { time: "16:00", queries: 480, mutations: 198, latency: 52 },
-  { time: "20:00", queries: 290, mutations: 87, latency: 31 },
-  { time: "24:00", queries: 150, mutations: 56, latency: 25 },
+/**
+ * Datos de respaldo para cuando no hay conexión a la API
+ */
+
+// Historial de flujo por hora
+export const flowHistoryData = [
+  { time: "00:00", flowRate: 0.0, volume: 0 },
+  { time: "04:00", flowRate: 0.0, volume: 0 },
+  { time: "08:00", flowRate: 2.3, volume: 45 },
+  { time: "10:00", flowRate: 2.8, volume: 120 },
+  { time: "12:00", flowRate: 3.2, volume: 280 },
+  { time: "14:00", flowRate: 2.5, volume: 180 },
+  { time: "16:00", flowRate: 2.9, volume: 220 },
+  { time: "18:00", flowRate: 1.8, volume: 95 },
+  { time: "20:00", flowRate: 1.2, volume: 45 },
+  { time: "22:00", flowRate: 0.5, volume: 15 },
 ];
 
-export const schemaTypesData = [
-  { name: "Query", value: 45, fill: "#00D9FF" },
-  { name: "Mutation", value: 28, fill: "#FF6B6B" },
-  { name: "Subscription", value: 12, fill: "#4ECDC4" },
-  { name: "Types", value: 89, fill: "#FFE66D" },
-  { name: "Inputs", value: 34, fill: "#95E1D3" },
+// Distribución de consumo por dispositivo/sensor
+export const deviceDistributionData = [
+  { name: "Sensor 001", value: 45, fill: "#00D9FF" },
+  { name: "Sensor 002", value: 28, fill: "#FF6B9D" },
+  { name: "Sensor 003", value: 18, fill: "#A855F7" },
+  { name: "Sensor 004", value: 9, fill: "#10B981" },
 ];
 
-export const resolverLatencyData = [
-  { resolver: "users", p50: 12, p95: 45, p99: 89 },
-  { resolver: "products", p50: 8, p95: 32, p99: 67 },
-  { resolver: "orders", p50: 15, p95: 58, p99: 120 },
-  { resolver: "payments", p50: 23, p95: 78, p99: 156 },
-  { resolver: "analytics", p50: 34, p95: 112, p99: 234 },
+// Rendimiento de sensores (latencia en ms)
+export const sensorPerformanceData = [
+  { sensor: "Sensor 001", p50: 12, p95: 28, p99: 45 },
+  { sensor: "Sensor 002", p50: 8, p95: 22, p99: 38 },
+  { sensor: "Sensor 003", p50: 15, p95: 35, p99: 52 },
+  { sensor: "Sensor 004", p50: 10, p95: 25, p99: 42 },
 ];
 
-export const errorRateData = [
-  { hour: "1h", errors: 2, success: 98 },
-  { hour: "2h", errors: 1, success: 99 },
-  { hour: "3h", errors: 5, success: 95 },
-  { hour: "4h", errors: 3, success: 97 },
-  { hour: "5h", errors: 1, success: 99 },
-  { hour: "6h", errors: 4, success: 96 },
+// Estado del sistema (últimas 6 horas)
+export const systemStatusData = [
+  { hour: "1h", online: 100, offline: 0 },
+  { hour: "2h", online: 100, offline: 0 },
+  { hour: "3h", online: 98, offline: 2 },
+  { hour: "4h", online: 100, offline: 0 },
+  { hour: "5h", online: 100, offline: 0 },
+  { hour: "6h", online: 99, offline: 1 },
 ];
 
-export const cacheHitData = [
-  { name: "Cache Hit", value: 78, fill: "#00D9FF" },
-  { name: "Cache Miss", value: 22, fill: "#2A2A3E" },
+// Nivel del tanque/bomba
+export const tankLevelData = [
+  { name: "Nivel Actual", value: 75, fill: "#00D9FF" },
+  { name: "Espacio Libre", value: 25, fill: "#2A2A3E" },
 ];
 
-export const recentQueries = [
-  { id: 1, query: "GetUserProfile", time: "2ms", status: "success" },
-  { id: 2, query: "ListProducts", time: "15ms", status: "success" },
-  { id: 3, query: "CreateOrder", time: "45ms", status: "success" },
-  { id: 4, query: "UpdateInventory", time: "8ms", status: "error" },
-  { id: 5, query: "GetAnalytics", time: "234ms", status: "warning" },
+// Últimas lecturas/operaciones
+export const recentReadings = [
+  { id: 1, operation: "Lectura Flujo", value: "2.5 L/min", status: "success", time: "hace 2s" },
+  { id: 2, operation: "Llenado Completado", value: "15.2 L", status: "success", time: "hace 5min" },
+  { id: 3, operation: "Nivel Actualizado", value: "75%", status: "success", time: "hace 8min" },
+  { id: 4, operation: "Alerta Nivel Bajo", value: "30%", status: "warning", time: "hace 15min" },
+  { id: 5, operation: "Bomba Encendida", value: "ON", status: "success", time: "hace 20min" },
+];
+
+// Métricas de respaldo
+export const defaultMetrics = {
+  totalVolume: 1248.5,
+  avgFlowRate: 2.4,
+  totalFillings: 156,
+  efficiency: 94.5,
+  uptime: 99.2,
+};
+
+// Alertas de ejemplo
+export const sampleAlerts = [
+  {
+    id: "alert_1",
+    deviceId: "sensor_001",
+    alertType: "info",
+    message: "Sistema funcionando correctamente",
+    severity: "info",
+    timestamp: new Date(),
+  },
 ];

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   User,
@@ -14,27 +13,71 @@ import {
   Github,
   Chrome,
   GitBranch,
+  AlertCircle,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const { signup, loading, error, clearError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.push('/login');
-    }, 1500);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormError(null);
+    clearError();
   };
+
+  const validateForm = () => {
+    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
+      setFormError('Por favor completa todos los campos');
+      return false;
+    }
+
+    if (formData.username.length < 3) {
+      setFormError('El nombre de usuario debe tener al menos 3 caracteres');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setFormError('Por favor ingresa un email válido');
+      return false;
+    }
+
+    if (formData.password.length < 8) {
+      setFormError('La contraseña debe tener al menos 8 caracteres');
+      return false;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setFormError('Las contraseñas no coinciden');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!validateForm()) return;
+
+    const result = await signup(formData.username, formData.email, formData.password);
+    if (!result.success) {
+      setFormError(result.error);
+    }
+  };
+
+  const displayError = formError || error;
 
   return (
     <div className="auth-container">
@@ -45,19 +88,37 @@ export default function RegisterPage() {
           </div>
         </div>
         <h1 className="auth-title">Crear cuenta</h1>
-        <p className="auth-subtitle">Regístrate para comenzar a monitorear tu API GraphQL</p>
+        <p className="auth-subtitle">Regístrate para comenzar a monitorear tu dispensador de agua</p>
+
+        {displayError && (
+          <div className="error-message" style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid var(--accent-red)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <AlertCircle size={20} style={{ color: 'var(--accent-red)', flexShrink: 0 }} />
+            <span style={{ color: 'var(--accent-red)', fontSize: '14px' }}>{displayError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Nombre completo</label>
+            <label className="form-label">Nombre de usuario</label>
             <div className="input-wrapper">
               <User size={18} className="input-icon" />
               <input
                 type="text"
+                name="username"
                 className="form-input"
-                placeholder="John Doe"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="mi_usuario"
+                value={formData.username}
+                onChange={handleChange}
+                disabled={loading}
               />
             </div>
           </div>
@@ -68,10 +129,12 @@ export default function RegisterPage() {
               <Mail size={18} className="input-icon" />
               <input
                 type="email"
+                name="email"
                 className="form-input"
                 placeholder="tu@email.com"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={handleChange}
+                disabled={loading}
               />
             </div>
           </div>
@@ -82,10 +145,12 @@ export default function RegisterPage() {
               <Lock size={18} className="input-icon" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="password"
                 className="form-input"
                 placeholder="••••••••"
                 value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                onChange={handleChange}
+                disabled={loading}
               />
               <button
                 type="button"
@@ -103,16 +168,18 @@ export default function RegisterPage() {
               <Lock size={18} className="input-icon" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="confirmPassword"
                 className="form-input"
                 placeholder="••••••••"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                onChange={handleChange}
+                disabled={loading}
               />
             </div>
           </div>
 
           <div className="checkbox-wrapper" style={{ marginBottom: '24px' }}>
-            <input type="checkbox" className="checkbox" id="terms" />
+            <input type="checkbox" className="checkbox" id="terms" required />
             <label htmlFor="terms" className="checkbox-label">
               Acepto los términos de servicio y política de privacidad
             </label>
@@ -140,11 +207,11 @@ export default function RegisterPage() {
         </div>
 
         <div className="social-buttons">
-          <button className="btn-social">
+          <button className="btn-social" type="button">
             <Github size={20} />
             GitHub
           </button>
-          <button className="btn-social">
+          <button className="btn-social" type="button">
             <Chrome size={20} />
             Google
           </button>

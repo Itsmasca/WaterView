@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Mail,
+  User,
   Lock,
   Eye,
   EyeOff,
@@ -13,23 +12,42 @@ import {
   Github,
   Chrome,
   GitBranch,
+  AlertCircle,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
-  const router = useRouter();
+  const { login, loading, error, clearError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState(null);
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+  });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.push('/dashboard');
-    }, 1500);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormError(null);
+    clearError();
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!formData.username || !formData.password) {
+      setFormError('Por favor completa todos los campos');
+      return;
+    }
+
+    const result = await login(formData.username, formData.password);
+    if (!result.success) {
+      setFormError(result.error);
+    }
+  };
+
+  const displayError = formError || error;
 
   return (
     <div className="auth-container">
@@ -42,17 +60,35 @@ export default function LoginPage() {
         <h1 className="auth-title">Bienvenido de vuelta</h1>
         <p className="auth-subtitle">Ingresa tus credenciales para acceder al dashboard</p>
 
+        {displayError && (
+          <div className="error-message" style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid var(--accent-red)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <AlertCircle size={20} style={{ color: 'var(--accent-red)', flexShrink: 0 }} />
+            <span style={{ color: 'var(--accent-red)', fontSize: '14px' }}>{displayError}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Correo electrónico</label>
+            <label className="form-label">Usuario</label>
             <div className="input-wrapper">
-              <Mail size={18} className="input-icon" />
+              <User size={18} className="input-icon" />
               <input
-                type="email"
+                type="text"
+                name="username"
                 className="form-input"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu_usuario"
+                value={formData.username}
+                onChange={handleChange}
+                disabled={loading}
               />
             </div>
           </div>
@@ -63,10 +99,12 @@ export default function LoginPage() {
               <Lock size={18} className="input-icon" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="password"
                 className="form-input"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
+                disabled={loading}
               />
               <button
                 type="button"
@@ -110,11 +148,11 @@ export default function LoginPage() {
         </div>
 
         <div className="social-buttons">
-          <button className="btn-social">
+          <button className="btn-social" type="button">
             <Github size={20} />
             GitHub
           </button>
-          <button className="btn-social">
+          <button className="btn-social" type="button">
             <Chrome size={20} />
             Google
           </button>

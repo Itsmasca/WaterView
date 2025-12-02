@@ -3,27 +3,48 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  Mail,
+  User,
   ArrowLeft,
   ArrowRight,
   Loader2,
   CheckCircle,
   GitBranch,
+  AlertCircle,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ForgotPasswordPage() {
-  const [loading, setLoading] = useState(false);
+  const { resetPassword, loading, error, clearError } = useAuth();
   const [sent, setSent] = useState(false);
-  const [email, setEmail] = useState('');
+  const [formError, setFormError] = useState(null);
+  const [username, setUsername] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSent(true);
-    }, 1500);
+  const handleChange = (e) => {
+    setUsername(e.target.value);
+    setFormError(null);
+    clearError();
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!username) {
+      setFormError('Por favor ingresa tu nombre de usuario');
+      return;
+    }
+
+    const result = await resetPassword(username);
+    if (result.success) {
+      setSent(true);
+      setSuccessMessage(result.message);
+    } else {
+      setFormError(result.error);
+    }
+  };
+
+  const displayError = formError || error;
 
   return (
     <div className="auth-container">
@@ -40,29 +61,48 @@ export default function ForgotPasswordPage() {
         </div>
         <h1 className="auth-title">Recuperar contraseña</h1>
         <p className="auth-subtitle">
-          Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña
+          Ingresa tu nombre de usuario para restablecer tu contraseña
         </p>
+
+        {displayError && !sent && (
+          <div className="error-message" style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid var(--accent-red)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <AlertCircle size={20} style={{ color: 'var(--accent-red)', flexShrink: 0 }} />
+            <span style={{ color: 'var(--accent-red)', fontSize: '14px' }}>{displayError}</span>
+          </div>
+        )}
 
         {sent ? (
           <div className="success-message">
             <CheckCircle size={24} />
-            <p>
-              Hemos enviado un enlace de recuperación a <strong>{email}</strong>.
-              Revisa tu bandeja de entrada.
-            </p>
+            <div>
+              <p><strong>Contraseña restablecida</strong></p>
+              <p style={{ marginTop: '4px', opacity: 0.9 }}>
+                {successMessage || `La contraseña de ${username} ha sido restablecida a 'Password1234!'`}
+              </p>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Correo electrónico</label>
+              <label className="form-label">Nombre de usuario</label>
               <div className="input-wrapper">
-                <Mail size={18} className="input-icon" />
+                <User size={18} className="input-icon" />
                 <input
-                  type="email"
+                  type="text"
                   className="form-input"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu_usuario"
+                  value={username}
+                  onChange={handleChange}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -71,11 +111,11 @@ export default function ForgotPasswordPage() {
               {loading ? (
                 <>
                   <Loader2 size={20} className="spin" />
-                  Enviando...
+                  Procesando...
                 </>
               ) : (
                 <>
-                  Enviar enlace de recuperación
+                  Restablecer contraseña
                   <ArrowRight size={20} />
                 </>
               )}
